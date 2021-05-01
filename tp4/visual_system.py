@@ -94,7 +94,7 @@ def get_ICA_input_data(dataset_file_name, sample_size, number_of_samples):
     	sample = image_data_analysis.get_sample_image(data[i], sample_size, top_left_corner)    
     	samples.append(sample)
 
-    return samples
+    return np.array(samples)
 
 
 
@@ -130,8 +130,7 @@ def pre_process(X):
     X_new = []
     for sample in X : 
     	x = line_transform_img(sample)
-    	x = x - x.mean()
-    	x = image_data_analysis.get_power_spectrum_whitening_filter( get_sample_PS(x), 1)
+    	x = x - x.mean()    	
     	X_new.append( x )
 
     return np.array(X_new)
@@ -145,11 +144,9 @@ def get_IC(X):
     W(numpy.array) the matrix of the independent sources of the data
     """
 
-    #random initialisation of W
-    W = np.random.randint(10, size=(len(X),len(X)) )
-
-    # 
-    return 0
+    
+    W = FastICA( algorithm='parallel' , max_iter=300, n_components=10).fit(X)     
+    return W.components_
 
     
    
