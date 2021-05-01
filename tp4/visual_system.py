@@ -4,9 +4,20 @@ import pylab
 from sklearn.decomposition import FastICA
 import scipy.stats
 import h5py
-import image_data_analysis_full
+import random 
 
+import io_image_data
+import image_data_analysis
 
+#import image_data_analysis_full
+
+def relu(x) : 
+	return max(0., x)
+
+#vectorisation 
+relu = np.vectorize(relu)
+
+ 
 def truncate_non_neg(x):
     """Function that truncates arrays od real numbers into arrays of non negatives.
     Args:
@@ -14,8 +25,9 @@ def truncate_non_neg(x):
     Returns:
     y(numpy.array): array with positive or zero numbers
     """
-    #write your function here and erase the current return
-    return 0
+    
+    y = relu(x)
+    return y
 
 
 def get_power_spectrum_whitening_filter(average_PS,noise_variance):
@@ -25,10 +37,21 @@ def get_power_spectrum_whitening_filter(average_PS,noise_variance):
     noise_variance(double): variance of the gaussian white noite.
     Returns:
     w(numpy.array): whitening denoising filter
-    """
-    #write your function here and erase the current return
-    return 0
+    """    
 
+    M = average_PS.size
+
+    #reshape the average PS 
+    average_PS = np.fft.ifftshift(average_PS) 
+    
+    #compute filter
+    w = np.fft.ifft2(  truncate_non_neg( (average_PS - noise_variance**2*M*np.ones((average_PS.shape[0], average_PS.shape[0]) ) ) / average_PS ) / np.sqrt(average_PS) )
+    
+    #reshape the average PS 
+    average_PS = np.fft.fftshift(average_PS) 
+
+
+    return   np.fft.fftshift( w.real )  
 
 
 def make_whitening_filters_figure(whitening_filters):
@@ -51,9 +74,49 @@ def get_ICA_input_data(dataset_file_name, sample_size, number_of_samples):
     Returns:
     X(numpy.array)nSamples, sample_size
     """
-    #write your function here and erase the current return
-    return 0
 
+    #load data 
+    data = io_image_data.readH5(dataset_file_name, 'images')
+    #recover image size
+    database_size , l , L = data.shape
+
+    #samples
+    samples = []
+
+    for i in range(number_of_samples) : 
+
+    	if i == database_size : 
+    		break 
+
+    	#choose position
+    	top_left_corner =  image_data_analysis.get_sample_top_left_corner(0,l - sample_size[0] ,0 , L - sample_size[1] )
+    	#get sample
+    	sample = image_data_analysis.get_sample_image(data[i], sample_size, top_left_corner)    
+    	samples.append(sample)
+
+    return samples
+
+
+
+def get_line_index(dSize):
+    """
+    Cette fonction permet d'obtenir l'ordre de parcours des pixels d'une image carrée selon un parcours ligne par ligne
+    :param dSize: largeur ou longueur de l'image en pixel (peu importe, la fonction ne fonctionne qu'avec des images carrées)
+    :return: une liste de taille 2*dSize*dSize qui correspond aux coordonnées de chaque pixel ordonnée selon le parcours ligne par ligne
+    """
+    return [a.flatten() for a in np.indices((dSize, dSize))]
+
+  
+
+def line_transform_img(img):
+    """
+    Cette fonction prend une image carrée en entrée, et retourne l'image applatie (1 dimension) selon le parcours ligne par ligne
+    :param img: une image (donc un numpy array 2 dimensions)
+    :return: un numpy array 1 dimension
+    """
+    assert img.shape[0] == img.shape[1], 'veuillez donner une image carrée en entrée'
+    idx = get_line_index(img.shape[0])
+    return img[idx[0], idx[1]]
 
 
 def pre_process(X):
@@ -63,8 +126,15 @@ def pre_process(X):
     Returns:
     X(numpy.array)
     """
-    #write your function here and erase the current return
-    return 0
+
+    X_new = []
+    for sample in X : 
+    	x = line_transform_img(sample)
+    	x = x - x.mean()
+    	x = image_data_analysis.get_power_spectrum_whitening_filter( get_sample_PS(x), 1)
+    	X_new.append( x )
+
+    return np.array(X_new)
 
     
 def get_IC(X):
@@ -74,7 +144,11 @@ def get_IC(X):
     Returns:
     W(numpy.array) the matrix of the independent sources of the data
     """
-    #write your function here and erase the current return
+
+    #random initialisation of W
+    W = np.random.randint(10, size=(len(X),len(X)) )
+
+    # 
     return 0
 
     
